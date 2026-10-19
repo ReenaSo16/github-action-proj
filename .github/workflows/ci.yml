@@ -44,3 +44,8 @@ jobs:
 
       - name: Build Application
         run: mvn clean package
+      
+      - name: Verify WAR Artifact
+        run: |
+           echo "Checking genrated WAR Files"
+           ls -lh target/*.war
