@@ -1,0 +1,41 @@
+
+name: Bookservice CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on Azure Self-Hosted Runner
+    runs-on: [self-hosted, linux, x64, azure-linux]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Check Operating System
+        run: |
+          whoami
+          uname -a
+          pwd
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Verify Java and Maven
+        run: |
+          java -version
+          mvn -version
+
+      - name: Build Application
+        run: mvn clean package
