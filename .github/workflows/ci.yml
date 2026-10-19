@@ -49,3 +49,12 @@ jobs:
         run: |
            echo "Checking genrated WAR Files"
            ls -lh target/*.war
+      
+      
+      - name: Upload WAR Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bookservice-war
+          path: target/*.war
+          if-no-files-found: error
+          retention-days: 7
