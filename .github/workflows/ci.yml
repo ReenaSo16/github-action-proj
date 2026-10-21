@@ -77,6 +77,16 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
+          test -n "$SONAR_HOST_URL" || {
+            echo "SONAR_HOST_URL secret is missing"
+            exit 1
+          }
+
+          test -n "$SONAR_TOKEN" || {
+            echo "SONAR_TOKEN secret is missing"
+            exit 1
+          }
+
           mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \
             -Dsonar.projectKey=Bookservice \
             -Dsonar.projectName=Bookservice \
@@ -84,7 +94,6 @@ jobs:
             -Dsonar.token="$SONAR_TOKEN" \
             -Dsonar.qualitygate.wait=true \
             -Dsonar.qualitygate.timeout=300
-
 
   nexus:
     name: 3. Upload WAR to Nexus
@@ -111,18 +120,57 @@ jobs:
         with:
           maven-version: '3.9.9'
 
+      - name: Configure Nexus Credentials
+        env:
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -n "$NEXUS_USERNAME" || {
+            echo "NEXUS_USERNAME secret is missing"
+            exit 1
+          }
+
+          test -n "$NEXUS_PASSWORD" || {
+            echo "NEXUS_PASSWORD secret is missing"
+            exit 1
+          }
+
+          mkdir -p "$HOME/.m2"
+          umask 077
+
+          cat > "$HOME/.m2/settings.xml" <<'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.2.0">
+            <servers>
+              <server>
+                <id>nexus-releases</id>
+                <username>${env.NEXUS_USERNAME}</username>
+                <password>${env.NEXUS_PASSWORD}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
       - name: Upload WAR to Nexus
         env:
           NEXUS_URL: ${{ secrets.NEXUS_URL }}
-          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+        shell: bash
         run: |
-          WAR_FILE=$(find dist -type f -name "*.war" -print -quit)
+          set -euo pipefail
 
-          if [ -z "$WAR_FILE" ]; then
+          test -n "$NEXUS_URL" || {
+            echo "NEXUS_URL secret is missing"
+            exit 1
+          }
+
+          WAR_FILE=$(find dist -maxdepth 1 -type f -name "*.war" -print -quit)
+
+          test -n "$WAR_FILE" || {
             echo "WAR file not found"
             exit 1
-          fi
+          }
 
           mvn -B org.apache.maven.plugins:maven-deploy-plugin:3.1.3:deploy-file \
             -Durl="${NEXUS_URL%/}/repository/maven-repo/" \
@@ -133,3 +181,4 @@ jobs:
             -Dversion=0.0.1 \
             -Dpackaging=war \
             -DgeneratePom=true
+
