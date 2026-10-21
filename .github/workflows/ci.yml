@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build:
-    name: 1. Build and Test
+    name: 1. Build and Test2
     runs-on: [self-hosted, linux, x64]
 
     steps:
