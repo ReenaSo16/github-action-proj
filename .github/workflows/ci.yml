@@ -154,7 +154,17 @@ jobs:
             </servers>
           </settings>
           EOF
-
+      - name: Test Nexus Authentication
+        env:
+          NEXUS_URL: ${{ secrets.NEXUS_URL }}
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+        run: |
+          curl -sS -o /dev/null \
+            -w "Nexus HTTP status: %{http_code}\n" \
+            -u "$NEXUS_USERNAME:$NEXUS_PASSWORD" \
+            "$NEXUS_URL/service/rest/v1/status"
+            
       - name: Upload WAR to Nexus
         env:
           NEXUS_URL: ${{ secrets.NEXUS_URL }}
