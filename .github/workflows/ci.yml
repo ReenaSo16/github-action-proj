@@ -76,6 +76,7 @@ jobs:
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        shell: bash
         run: |
           set -euo pipefail
 
@@ -143,31 +144,23 @@ jobs:
           mkdir -p "$HOME/.m2"
           umask 077
 
-          cat > "$HOME/.m2/settings.xml" <<EOF
+          cat > "$HOME/.m2/settings.xml" <<'SETTINGS'
           <settings xmlns="http://maven.apache.org/SETTINGS/1.2.0">
             <servers>
               <server>
                 <id>nexus-releases</id>
-                <username>${NEXUS_USERNAME}</username>
-                <password>${NEXUS_PASSWORD}</password>
+                <username>${env.NEXUS_USERNAME}</username>
+                <password>${env.NEXUS_PASSWORD}</password>
               </server>
             </servers>
           </settings>
-          EOF
+          SETTINGS
+
       - name: Test Nexus Authentication
         env:
           NEXUS_URL: ${{ secrets.NEXUS_URL }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
-        run: |
-          curl -sS -o /dev/null \
-            -w "Nexus HTTP status: %{http_code}\n" \
-            -u "$NEXUS_USERNAME:$NEXUS_PASSWORD" \
-            "$NEXUS_URL/service/rest/v1/status"
-            
-      - name: Upload WAR to Nexus
-        env:
-          NEXUS_URL: ${{ secrets.NEXUS_URL }}
         shell: bash
         run: |
           set -euo pipefail
@@ -176,6 +169,25 @@ jobs:
             echo "NEXUS_URL secret is missing"
             exit 1
           }
+
+          HTTP_STATUS=$(curl -sS -o /dev/null \
+            -w "%{http_code}" \
+            -u "$NEXUS_USERNAME:$NEXUS_PASSWORD" \
+            "$NEXUS_URL/service/rest/v1/status")
+
+          echo "Nexus HTTP status: $HTTP_STATUS"
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Nexus authentication test failed."
+            exit 1
+          fi
+
+      - name: Upload WAR to Nexus
+        env:
+          NEXUS_URL: ${{ secrets.NEXUS_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
 
           WAR_FILE=$(find dist -maxdepth 1 -type f -name "*.war" -print -quit)
 
