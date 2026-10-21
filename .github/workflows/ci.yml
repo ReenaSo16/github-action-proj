@@ -85,6 +85,7 @@ jobs:
             -Dsonar.qualitygate.wait=true \
             -Dsonar.qualitygate.timeout=300
 
+
   nexus:
     name: 3. Upload WAR to Nexus
     needs: sonar
@@ -97,6 +98,18 @@ jobs:
         with:
           name: bookservice-war
           path: dist
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Setup Maven
+        uses: stCarolas/setup-maven@v5
+        with:
+          maven-version: '3.9.9'
 
       - name: Upload WAR to Nexus
         env:
@@ -120,4 +133,3 @@ jobs:
             -Dversion=0.0.1 \
             -Dpackaging=war \
             -DgeneratePom=true
-
