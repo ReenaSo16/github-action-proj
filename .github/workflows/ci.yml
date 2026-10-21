@@ -4,15 +4,19 @@ on:
   push:
     branches:
       - main
+
   pull_request:
     branches:
       - main
+
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+
+  # 1. Build and Test
   build:
     name: 1. Build and Test
     runs-on: [self-hosted, linux, x64]
@@ -49,6 +53,8 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+
+  # 2. SonarQube Analysis
   sonar:
     name: 2. SonarQube Analysis
     needs: build
@@ -98,6 +104,8 @@ jobs:
             -Dsonar.qualitygate.wait=true \
             -Dsonar.qualitygate.timeout=300
 
+
+  # 3. Upload WAR to Nexus
   nexus:
     name: 3. Upload WAR to Nexus
     needs: sonar
@@ -123,13 +131,19 @@ jobs:
         with:
           maven-version: '3.9.9'
 
-      - name: Configure Nexus Credentials
+      - name: Upload WAR to Nexus
         env:
+          NEXUS_URL: ${{ secrets.NEXUS_URL }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
+
+          test -n "$NEXUS_URL" || {
+            echo "NEXUS_URL secret is missing"
+            exit 1
+          }
 
           test -n "$NEXUS_USERNAME" || {
             echo "NEXUS_USERNAME secret is missing"
@@ -140,6 +154,16 @@ jobs:
             echo "NEXUS_PASSWORD secret is missing"
             exit 1
           }
+
+          WAR_FILE=$(find dist -maxdepth 1 -type f -name "*.war" -print -quit)
+
+          test -n "$WAR_FILE" || {
+            echo "WAR file not found"
+            exit 1
+          }
+
+          echo "WAR file found:"
+          ls -lh "$WAR_FILE"
 
           mkdir -p "$HOME/.m2"
           umask 077
@@ -156,46 +180,6 @@ jobs:
           </settings>
           SETTINGS
 
-      - name: Test Nexus Authentication
-        env:
-          NEXUS_URL: ${{ secrets.NEXUS_URL }}
-          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          test -n "$NEXUS_URL" || {
-            echo "NEXUS_URL secret is missing"
-            exit 1
-          }
-
-          HTTP_STATUS=$(curl -sS -o /dev/null \
-            -w "%{http_code}" \
-            -u "$NEXUS_USERNAME:$NEXUS_PASSWORD" \
-            "$NEXUS_URL/service/rest/v1/status")
-
-          echo "Nexus HTTP status: $HTTP_STATUS"
-
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo "Nexus authentication test failed."
-            exit 1
-          fi
-
-      - name: Upload WAR to Nexus
-        env:
-          NEXUS_URL: ${{ secrets.NEXUS_URL }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          WAR_FILE=$(find dist -maxdepth 1 -type f -name "*.war" -print -quit)
-
-          test -n "$WAR_FILE" || {
-            echo "WAR file not found"
-            exit 1
-          }
-
           mvn -B org.apache.maven.plugins:maven-deploy-plugin:3.1.3:deploy-file \
             -Durl="${NEXUS_URL%/}/repository/maven-repo/" \
             -DrepositoryId=nexus-releases \
@@ -205,3 +189,5 @@ jobs:
             -Dversion=0.0.1 \
             -Dpackaging=war \
             -DgeneratePom=true
+
+          echo "WAR uploaded to Nexus successfully."
