@@ -3,13 +3,13 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="
            http://maven.apache.org/POM/4.0.0
-           http://maven.apache.org/xsd/maven-4.0.0.xsd">
+           https://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.example</groupId>
     <artifactId>bookservice</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.1</version>
     <packaging>war</packaging>
 
     <parent>
@@ -25,7 +25,7 @@
 
     <dependencies>
 
-        <!-- Spring Web (NO Logback) -->
+        <!-- Spring Web without default logging -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -44,7 +44,7 @@
             <version>1.10.0</version>
         </dependency>
 
-        <!-- Apache POI (Excel) -->
+        <!-- Apache POI for Excel -->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
@@ -60,10 +60,18 @@
 
     </dependencies>
 
+    <distributionManagement>
+        <repository>
+            <id>nexus-releases</id>
+            <name>maven-repo</name>
+            <url>http://52.172.147.178:8081/repository/maven-repo/</url>
+        </repository>
+    </distributionManagement>
+
     <build>
         <plugins>
 
-            <!-- WAR plugin -->
+            <!-- WAR packaging -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
@@ -73,7 +81,7 @@
                 </configuration>
             </plugin>
 
-            <!-- COMPLETELY DISABLE Spring Boot repackage -->
+            <!-- Disable Spring Boot executable WAR repackaging -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -89,4 +97,3 @@
     </build>
 
 </project>
-
