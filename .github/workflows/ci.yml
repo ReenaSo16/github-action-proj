@@ -72,11 +72,13 @@ jobs:
         with:
           maven-version: '3.9.9'
 
-      - name: SonarQube Analysis
+      - name: SonarQube Analysis and Quality Gate
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
+          set -euo pipefail
+
           test -n "$SONAR_HOST_URL" || {
             echo "SONAR_HOST_URL secret is missing"
             exit 1
@@ -141,13 +143,13 @@ jobs:
           mkdir -p "$HOME/.m2"
           umask 077
 
-          cat > "$HOME/.m2/settings.xml" <<'EOF'
+          cat > "$HOME/.m2/settings.xml" <<EOF
           <settings xmlns="http://maven.apache.org/SETTINGS/1.2.0">
             <servers>
               <server>
                 <id>nexus-releases</id>
-                <username>${env.NEXUS_USERNAME}</username>
-                <password>${env.NEXUS_PASSWORD}</password>
+                <username>${NEXUS_USERNAME}</username>
+                <password>${NEXUS_PASSWORD}</password>
               </server>
             </servers>
           </settings>
@@ -181,4 +183,3 @@ jobs:
             -Dversion=0.0.1 \
             -Dpackaging=war \
             -DgeneratePom=true
-
